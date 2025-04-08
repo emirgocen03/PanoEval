@@ -1,14 +1,12 @@
-import os
 import torch
 from torchvision import transforms
-from PIL import Image
-from tqdm import tqdm
 from panfusion_faed import FrechetAutoEncoderDistance
 
 
-def load_images_tensor(folder, image_size=(512, 256), device='cuda', normalize=False):
+def preprocess_images(images, image_size=(512, 256), device='cuda', normalize=False):
     """
-    Load and preprocess panorama images for FAED.
+    Preprocess panorama images for FAED.
+    Returns a tensor of shape (N, 3, H, W).
     """
     tf = transforms.Compose([
         transforms.Resize(image_size),
@@ -16,18 +14,15 @@ def load_images_tensor(folder, image_size=(512, 256), device='cuda', normalize=F
         transforms.Lambda(lambda x: (x * 255).to(torch.uint8) if not normalize else x)
     ])
     
-    images = []
-    for fname in tqdm(os.listdir(folder), desc=f"Loading images from {folder}"):
-        if fname.lower().endswith((".png", ".jpg", ".jpeg")):
-            img_path = os.path.join(folder, fname)
-            img = Image.open(img_path).convert("RGB")
-            images.append(tf(img))
-    return torch.stack(images).to(device)
+    preprocessed_images = []
+    for img in images:
+        preprocessed_images.append(tf(img))
+    return torch.stack(preprocessed_images).to(device)
 
 
 def compute_faed(
-    real_dir,
-    gen_dir,
+    real_images,
+    gen_images,
     pano_height=256,
     image_size=(512, 256),
     device='cuda' if torch.cuda.is_available() else 'cpu'
@@ -36,8 +31,8 @@ def compute_faed(
     Compute Frechet AutoEncoder Distance (FAED) between real and generated panoramic images.
 
     Args:
-        real_dir (str): Path to real images.
-        gen_dir (str): Path to generated images.
+        real_images (List): List of PIL images.
+        gen_images (List): List of PIL images.
         pano_height (int): Used for estimating feature vector size.
         image_size (tuple): Resize target (W, H).
         device (str): cuda or cpu
@@ -48,9 +43,9 @@ def compute_faed(
     # Initialize metric
     metric = FrechetAutoEncoderDistance(pano_height=pano_height).to(device)
 
-    # Load and process images
-    real_imgs = load_images_tensor(real_dir, image_size=image_size, device=device)
-    gen_imgs = load_images_tensor(gen_dir, image_size=image_size, device=device)
+    # Preprocess images
+    real_imgs = preprocess_images(real_images, image_size=image_size, device=device)
+    gen_imgs = preprocess_images(gen_images, image_size=image_size, device=device)
 
     # Update metric
     metric.update(real_imgs, real=True)

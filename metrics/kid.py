@@ -1,13 +1,12 @@
-import os
 import torch
 from torchmetrics.image.kid import KernelInceptionDistance
 from torchvision import transforms
-from PIL import Image
 
 
-def load_images_tensor(folder, image_size=(299, 299), normalize=False):
+def preprocess_images(images, image_size=(299, 299), normalize=False):
     """
-    Load all images from a folder and return a torch.Tensor of shape (N, 3, H, W).
+    Preprocess images to match the input requirements for the metric.
+    Returns a tensor of shape (N, 3, H, W).
     """
     if normalize:
         tf = transforms.Compose([
@@ -21,16 +20,14 @@ def load_images_tensor(folder, image_size=(299, 299), normalize=False):
             transforms.Lambda(lambda x: (x * 255).to(torch.uint8))  # cast to uint8 in [0,255]
         ])
 
-    tensors = []
-    for fname in os.listdir(folder):
-        if fname.lower().endswith((".png", ".jpg", ".jpeg")):
-            img_path = os.path.join(folder, fname)
-            img = Image.open(img_path).convert("RGB")
-            tensors.append(tf(img))
-    return torch.stack(tensors)
+    processed_images = []
+    for img in images:
+        processed_images.append(tf(img))
+    return torch.stack(processed_images)
 
 
-def compute_kid(real_dir, gen_dir, 
+def compute_kid(real_images, 
+                gen_images, 
                 feature_dim=2048, 
                 subsets=100, 
                 subset_size=1000, 
@@ -41,8 +38,8 @@ def compute_kid(real_dir, gen_dir,
     Compute Kernel Inception Distance (KID) between real and generated image directories.
 
     Args:
-        real_dir (str): Path to real images.
-        gen_dir (str): Path to generated images.
+        real_images (List): List of PIL images.
+        gen_images (List): List of PIL images.
         feature_dim (int): Feature layer to use. Default = 2048.
         subsets (int): Number of random subsets.
         subset_size (int): Number of images per subset.
@@ -62,8 +59,8 @@ def compute_kid(real_dir, gen_dir,
     ).to(device)
     kid_metric.set_dtype(dtype)
 
-    real_imgs = load_images_tensor(real_dir, normalize=normalize).to(device)
-    gen_imgs = load_images_tensor(gen_dir, normalize=normalize).to(device)
+    real_imgs = preprocess_images(real_images, normalize=normalize).to(device)
+    gen_imgs = preprocess_images(gen_images, normalize=normalize).to(device)
 
     kid_metric.update(real_imgs, real=True)
     kid_metric.update(gen_imgs, real=False)

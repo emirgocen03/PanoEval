@@ -1,26 +1,22 @@
-import os
 import torch
 import torch.nn.functional as F
 from torchvision import transforms
-from PIL import Image
 
 
-def load_images_tensor(folder, image_size=(512, 256), device='cuda'):
+def preprocess_images(images, image_size=(512, 256), device='cuda'):
     """
-    Loads and resizes all images in a folder. Returns a tensor of shape (N, 3, H, W).
+    Preprocess images to match the input requirements for the metric.
+    Returns a tensor of shape (N, 3, H, W).
     """
     tf = transforms.Compose([
         transforms.Resize(image_size),
         transforms.ToTensor()
     ])
 
-    tensors = []
-    for fname in sorted(os.listdir(folder)):
-        if fname.lower().endswith((".png", ".jpg", ".jpeg")):
-            img_path = os.path.join(folder, fname)
-            img = Image.open(img_path).convert("RGB")
-            tensors.append(tf(img).to(device))
-    return tensors
+    processed_images = []
+    for img in images:
+        processed_images.append(tf(img).to(device))
+    return preprocess_images
 
 
 def scharr_kernel():
@@ -63,7 +59,7 @@ def compute_ds_score(gray_seam, kernel, eps=0.1):
     return (top.sum() + bottom.sum()).item() / (2 * L)
 
 
-def compute_discontinuity_score(folder, image_size=(512, 256), device='cuda'):
+def compute_discontinuity_score(gen_images, image_size=(512, 256), device='cuda'):
     """
     Computes average Discontinuity Score for all generated panoramas in folder.
     """
@@ -72,7 +68,7 @@ def compute_discontinuity_score(folder, image_size=(512, 256), device='cuda'):
     height = image_size[1]
     scale_factor = seam_width / height
 
-    image_tensors = load_images_tensor(folder, image_size=image_size, device=device)
+    image_tensors = preprocess_images(gen_images, image_size=image_size, device=device)
 
     scores = []
     for img_tensor in image_tensors:

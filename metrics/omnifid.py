@@ -1,26 +1,22 @@
-import os
 import torch
 from torchvision import transforms
-from PIL import Image
 from torchmetrics.image.fid import FrechetInceptionDistance
 import kornia.geometry as KG
 
 
-def load_equirectangular_images(folder, image_size=(512, 256), device='cuda'):
+def preprocess_images(images, image_size=(512, 256), device='cuda'):
     """
-    Loads all panorama (equirectangular) images from a folder.
-    Returns: tensor of shape (N, 3, H, W)
+    Preprocess images to match the input requirements for the metric.
+    Returns a tensor of shape (N, 3, H, W).
     """
     tf = transforms.Compose([
         transforms.Resize(image_size),
         transforms.ToTensor()
     ])
-    imgs = []
-    for fname in sorted(os.listdir(folder)):
-        if fname.lower().endswith(('.jpg', '.jpeg', '.png')):
-            img = Image.open(os.path.join(folder, fname)).convert("RGB")
-            imgs.append(tf(img))
-    return torch.stack(imgs).to(device)
+    processed_images = []
+    for img in images:
+        processed_images.append(tf(img))
+    return torch.stack(processed_images).to(device)
 
 
 def equirectangular_to_cubemap_batch(eqr_imgs, face_size=256):
@@ -67,8 +63,8 @@ def compute_group_fid(real_imgs, gen_imgs, group, device='cuda'):
 
 
 def compute_omnifid(
-    real_dir,
-    gen_dir,
+    real_images,
+    gen_images,
     pano_size=(512, 256),
     face_size=256,
     device='cuda' if torch.cuda.is_available() else 'cpu'
@@ -76,18 +72,18 @@ def compute_omnifid(
     """
     Compute OmniFID from equirectangular panoramas.
     """
-    # Step 1: Load panos
-    real_eqr = load_equirectangular_images(real_dir, pano_size, device)
-    gen_eqr = load_equirectangular_images(gen_dir, pano_size, device)
+    # Step 1: Preprocess panos to equirectangular images    
+    real_eqr_imgs = preprocess_images(real_images, pano_size, device)
+    gen_eqr_imgs = preprocess_images(gen_images, pano_size, device)
 
-    # Step 2: Convert to cubemap (B, 6, 3, face_size, face_size)
-    real_cubes = equirectangular_to_cubemap_batch(real_eqr, face_size=face_size)
-    gen_cubes = equirectangular_to_cubemap_batch(gen_eqr, face_size=face_size)
+    # Step 2: Convert equirectangular images to cubemap (B, 6, 3, face_size, face_size)
+    real_cubemaps = equirectangular_to_cubemap_batch(real_eqr_imgs, face_size=face_size)
+    gen_cubemaps = equirectangular_to_cubemap_batch(gen_eqr_imgs, face_size=face_size)
 
     # Step 3: Compute FID for each group
-    f_fid = compute_group_fid(real_cubes, gen_cubes, 'F', device)
-    u_fid = compute_group_fid(real_cubes, gen_cubes, 'U', device)
-    d_fid = compute_group_fid(real_cubes, gen_cubes, 'D', device)
+    f_fid = compute_group_fid(real_cubemaps, gen_cubemaps, 'F', device)
+    u_fid = compute_group_fid(real_cubemaps, gen_cubemaps, 'U', device)
+    d_fid = compute_group_fid(real_cubemaps, gen_cubemaps, 'D', device)
 
     # Step 4: Average FIDs → OmniFID
     omnifid_score = (f_fid + u_fid + d_fid) / 3.0
