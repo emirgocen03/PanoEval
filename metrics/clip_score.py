@@ -1,6 +1,7 @@
 import torch
 from torchvision import transforms
 from torchmetrics.multimodal.clip_score import CLIPScore
+from tqdm import tqdm
 
 
 def preprocess_images(images, image_size=(224, 224), normalize=True):
@@ -16,9 +17,9 @@ def preprocess_images(images, image_size=(224, 224), normalize=True):
     ])
 
     processed_images = []
-    for img in images:
+    for img in tqdm(images, desc="Preprocessing (CLIP score)"):
         processed_images.append(tf(img))
-    return processed_images
+    return torch.stack(processed_images)
 
 
 def compute_clip_score(
@@ -40,15 +41,12 @@ def compute_clip_score(
         float: Average CLIP Score [0, 100].
     """
     # Load images and captions
-    gen_imgs = preprocess_images(gen_images)
-
-    # Convert to batch
-    image_tensor = torch.stack(gen_imgs).to(device)
+    gen_imgs = preprocess_images(gen_images).to(device)
 
     # Initialize CLIPScore metric
     metric = CLIPScore(model_name_or_path=model_name).to(device)
 
     # Compute score
-    metric.update(image_tensor, text_prompts)
+    metric.update(gen_imgs, text_prompts)
     score = metric.compute()
     return score.item()

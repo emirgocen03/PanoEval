@@ -1,12 +1,12 @@
 import torch
 import torch.nn.functional as F
 from torchvision import transforms
-
+from tqdm import tqdm
 
 def preprocess_images(images, image_size=(512, 256), device='cuda'):
     """
     Preprocess images to match the input requirements for the metric.
-    Returns a tensor of shape (N, 3, H, W).
+    Returns a list of tensors of shape (3, H, W).
     """
     tf = transforms.Compose([
         transforms.Resize(image_size),
@@ -14,9 +14,9 @@ def preprocess_images(images, image_size=(512, 256), device='cuda'):
     ])
 
     processed_images = []
-    for img in images:
+    for img in tqdm(images, desc="Preprocessing (Discontinuity score)"):
         processed_images.append(tf(img).to(device))
-    return preprocess_images
+    return processed_images
 
 
 def scharr_kernel():

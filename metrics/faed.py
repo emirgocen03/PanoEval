@@ -1,9 +1,10 @@
 import torch
 from torchvision import transforms
 from panfusion_faed import FrechetAutoEncoderDistance
+from tqdm import tqdm
 
 
-def preprocess_images(images, image_size=(512, 256), device='cuda', normalize=False):
+def preprocess_images(images, image_size=(512, 256), normalize=False):
     """
     Preprocess panorama images for FAED.
     Returns a tensor of shape (N, 3, H, W).
@@ -15,9 +16,9 @@ def preprocess_images(images, image_size=(512, 256), device='cuda', normalize=Fa
     ])
     
     preprocessed_images = []
-    for img in images:
+    for img in tqdm(images, desc="Preprocessing (FAED)"):
         preprocessed_images.append(tf(img))
-    return torch.stack(preprocessed_images).to(device)
+    return torch.stack(preprocessed_images)
 
 
 def compute_faed(
@@ -44,8 +45,8 @@ def compute_faed(
     metric = FrechetAutoEncoderDistance(pano_height=pano_height).to(device)
 
     # Preprocess images
-    real_imgs = preprocess_images(real_images, image_size=image_size, device=device)
-    gen_imgs = preprocess_images(gen_images, image_size=image_size, device=device)
+    real_imgs = preprocess_images(real_images, image_size=image_size).to(device)
+    gen_imgs = preprocess_images(gen_images, image_size=image_size).to(device)
 
     # Update metric
     metric.update(real_imgs, real=True)

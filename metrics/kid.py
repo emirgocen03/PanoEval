@@ -1,6 +1,7 @@
 import torch
 from torchmetrics.image.kid import KernelInceptionDistance
 from torchvision import transforms
+from tqdm import tqdm
 
 
 def preprocess_images(images, image_size=(299, 299), normalize=False):
@@ -21,7 +22,7 @@ def preprocess_images(images, image_size=(299, 299), normalize=False):
         ])
 
     processed_images = []
-    for img in images:
+    for img in tqdm(images, desc="Preprocessing (KID)"):
         processed_images.append(tf(img))
     return torch.stack(processed_images)
 

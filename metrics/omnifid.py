@@ -2,6 +2,7 @@ import torch
 from torchvision import transforms
 from torchmetrics.image.fid import FrechetInceptionDistance
 import kornia.geometry as KG
+from tqdm import tqdm
 
 
 def preprocess_images(images, image_size=(512, 256), device='cuda'):
@@ -14,7 +15,7 @@ def preprocess_images(images, image_size=(512, 256), device='cuda'):
         transforms.ToTensor()
     ])
     processed_images = []
-    for img in images:
+    for img in tqdm(images, desc="Preprocessing (OmniFID)"):
         processed_images.append(tf(img))
     return torch.stack(processed_images).to(device)
 
