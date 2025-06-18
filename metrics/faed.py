@@ -1,6 +1,6 @@
 import torch
 from torchvision import transforms
-from panfusion_faed import FrechetAutoEncoderDistance
+from .panfusion_faed import FrechetAutoEncoderDistance
 from tqdm import tqdm
 
 
@@ -24,7 +24,7 @@ def preprocess_images(images, image_size=(512, 256), normalize=False):
 def compute_faed(
     real_images,
     gen_images,
-    pano_height=256,
+    pano_height=512,
     image_size=(512, 256),
     device='cuda' if torch.cuda.is_available() else 'cpu'
 ):
@@ -53,5 +53,6 @@ def compute_faed(
     metric.update(gen_imgs, real=False)
 
     # Compute FAED
+    print("Calculating...")
     faed_score = metric.compute().item()
     return faed_score

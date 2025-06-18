@@ -69,7 +69,7 @@ def compute_discontinuity_score(gen_images, image_size=(512, 256), device='cuda'
     scale_factor = seam_width / height
 
     image_tensors = preprocess_images(gen_images, image_size=image_size, device=device)
-
+    print("Calculating...")
     scores = []
     for img_tensor in image_tensors:
         seam = extract_seam_region(img_tensor, seam_width=seam_width)

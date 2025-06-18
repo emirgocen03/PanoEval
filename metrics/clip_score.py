@@ -7,13 +7,12 @@ from tqdm import tqdm
 def preprocess_images(images, image_size=(224, 224), normalize=True):
     """
     Preprocess images to match CLIP input requirements.
-    Returns list of (C, H, W) tensors.
+    Returns list of (C, H, W) tensors in [0,1] range.
     """
     tf = transforms.Compose([
         transforms.Resize(image_size),
         transforms.CenterCrop(image_size),
         transforms.ToTensor(),  # float32 in [0,1]
-        transforms.Normalize(mean=[0.4815, 0.4578, 0.4082], std=[0.2686, 0.2613, 0.2758]),  # CLIP normalization
     ])
 
     processed_images = []
@@ -48,5 +47,6 @@ def compute_clip_score(
 
     # Compute score
     metric.update(gen_imgs, text_prompts)
+    print("Calculating...")
     score = metric.compute()
     return score.item()
